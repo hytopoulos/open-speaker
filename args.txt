@@ -1,22 +1,10 @@
-config/triplet.json optimizer.lr=1e-6
-config/triplet.json optimizer.lr=5e-5
-config/triplet.json optimizer.lr=1e-5
-config/triplet.json optimizer.lr=5e-4
-config/triplet.json optimizer.lr=1e-4
-config/triplet.json optimizer.lr=5e-3
-config/triplet.json optimizer.lr=1e-3
-config/triplet.json optimizer.weight_decay=1e-4
-config/triplet.json optimizer.weight_decay=5e-3
-config/triplet.json optimizer.weight_decay=1e-3
-config/triplet.json optimizer.weight_decay=5e-2
-config/triplet.json optimizer.weight_decay=1e-2
-config/triplet.json optimizer.weight_decay=1e-2
-config/triplet.json init_k=2
-config/triplet.json model.name=SpeakerNetModel2
-config/triplet.json model.name=SpeakerNetModel2 model.params.init_k=2
-config/triplet.json model.name=SpeakerNetModel2 model.params.init_k=3
-config/triplet.json model.name=SpeakerNetModel2 model.params.dropout=0.1
-config/triplet.json model.name=SpeakerNetModel2 model.params.dropout=0.2
-config/triplet.json model.name=SpeakerNetModel2 model.params.dropout=0.3
-config/triplet.json model.name=SpeakerNetModel2 model.params.resnet_dim=512 model.params.fc_dim=512
-config/triplet.json model.name=SpeakerNetModel2 model.params.resnet_dim=1000 model.params.fc_dim=1000
+config/ce_ephn.json
+config/ce_epshn.json
+config/ce_hphn.json
+config/ce_hpshn.json
+config/ce_random.json
+config/triplet_ephn.json
+config/triplet_epshn.json
+config/triplet_hphn.json
+config/triplet_hpshn.json
+config/triplet_random.json

@@ -1,0 +1,15 @@
+universe = vanilla
+executable = ./run.sh
+request_cpus = 1
+request_gpus = 1
+gpus_minimum_memory = 10GB
+request_memory = 8GB
+output = .condor_logs/$(Process).out
+error  = .condor_logs/$(Process).err
+log    = .condor_logs/$(Process).log
++CSCI_GrpDesktop = true
+Requirements = (HasLocal581 =?= True)
+
+max_materialize = 4
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+arguments = config/triplet.json

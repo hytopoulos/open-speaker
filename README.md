@@ -2,10 +2,7 @@
 
 Open-set speaker verification using ResNet and triplet loss.
 
-The training dataset consists of 300 speakers, each with 10 spoken word clips
-
-![](metrics.png)
-
+The training dataset consists of 300 speakers, each with 10 spoken word clips.
 Designed and implemented for my deep learning final project.
 
 Inspired by these papers:

@@ -1,0 +1,47 @@
+{
+    "experiment_name": "triplet",
+    "cache_dir": ".cache",
+    "model": {
+        "name": "SpeakerNetModel",
+        "params": {
+            "init_k": 2,
+            "dropout": 0.5,
+            "resnet_dim": 512,
+            "fc_dim": 512
+        }
+    },
+    "dataset": {
+        "train" : {
+            "root": "/local/202510_csci581_project/project_data/task1/train"
+        },
+        "dev": {
+            "root": "/local/202510_csci581_project/project_data/task1/dev"
+        },
+        "test": {
+            "input_dir": "/local/202510_csci581_project/project_data/dryruns/dryrun_task1/example_input",
+            "output_dir": "output"
+        }
+    },
+    "loader": {
+        "batch_size": 1,
+        "num_workers": 1,
+        "pin_memory": true
+    },
+    "optimizer": {
+        "lr": 5e-7,
+        "weight_decay": 1e-4
+    },
+    "loss": {
+        "type": "triplet",
+        "margin": 1,
+        "positive": "random",
+        "negative": "random"
+    },
+    "checkpoint_freq": 10,
+    "checkpoint_dir": "checkpoints",
+    "val_interval": 5,
+    "num_epochs": 500,
+    "pca_on_finish": true,
+    "tsne_on_finish": true,
+    "eval_test": true
+}
