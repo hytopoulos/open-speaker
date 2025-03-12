@@ -2,12 +2,12 @@
     "experiment_name": "triplet",
     "cache_dir": ".cache",
     "model": {
-        "name": "SpeakerNetModel",
+        "name": "SpeakerNetTransformer",
         "params": {
             "init_k": 2,
             "dropout": 0.5,
             "resnet_dim": 512,
-            "fc_dim": 512
+            "lstm_dim": 512
         }
     },
     "dataset": {
@@ -28,14 +28,14 @@
         "pin_memory": true
     },
     "optimizer": {
-        "lr": 5e-3,
+        "lr": 5e-4,
         "weight_decay": 1e-4
     },
     "loss": {
-        "type": "ce",
+        "type": "triplet",
         "margin": 1,
-        "positive": "hard",
-        "negative": "hard"
+        "positive": "random",
+        "negative": "random"
     },
     "checkpoint_freq": 10,
     "checkpoint_dir": "checkpoints",

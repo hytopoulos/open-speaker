@@ -1,6 +1,7 @@
 import os, re, random
 import torch, torchaudio
 
+import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchaudio.functional import preemphasis
 from torchaudio.transforms import MelSpectrogram, AmplitudeToDB, AddNoise, FrequencyMasking
@@ -50,15 +51,18 @@ class AudioDataset(Dataset):
             with open(spkid_path, 'r') as f:
                 spkid = torch.tensor(int(f.read().strip()))
 
-            wav_data = self.pad_wav(wav_data)
+
+            wav_data, pad_mask = self.pad_wav(wav_data)
             wav_data = self.transform(wav_data)
-            # if data_root.find("train") != -1:
-            #     wav_data = self.augmentations(wav_data)
+
+            # resample pad masks
+            pad_mask = F.interpolate(pad_mask[None, None, :], size=(wav_data.shape[2]))[0, 0, :]
 
             if samples.get(spkid.item()) is None:
                 samples[spkid.item()] = []
             samples[spkid.item()].append({
                 "wav": wav_data,
+                "pad_mask": pad_mask,
                 "label": spkid
             })
         if self.cache_dir is not None:
@@ -71,7 +75,7 @@ class AudioDataset(Dataset):
 
         for _ in range(num_episodes):
             classes = random.sample(available_speakers, num_cls)
-            episode = { "wav": [], "label": [] }
+            episode = { "wav": [], "label": [], "pad_mask": [] }
             for c in classes:
                 if len(self.samples[c]) < num_shots:
                     continue
@@ -79,8 +83,10 @@ class AudioDataset(Dataset):
                 for s in shots:
                     episode["wav"].append(self.samples[c][s]["wav"])
                     episode["label"].append(self.samples[c][s]["label"])
+                    episode["pad_mask"].append(self.samples[c][s]["pad_mask"])
             episode["wav"] = torch.cat(episode["wav"], dim=0)
             episode["label"] = torch.stack(episode["label"])
+            episode["pad_mask"] = torch.stack(episode["pad_mask"])
             episodes.append(episode)
         self.episodes = episodes
 
@@ -88,8 +94,11 @@ class AudioDataset(Dataset):
     def pad_wav(self, wav):
         if wav.shape[1] < self.num_samples:
             pad_size = self.num_samples - wav.shape[1]
-            wav = torch.nn.functional.pad(wav, (0, pad_size))
-        return wav
+            wav = F.pad(wav, (pad_size, 0))
+            # 1 where there is padding, 0 otherwise
+            pad_mask = torch.zeros((wav.shape[1]), dtype=torch.float32)
+            pad_mask[-pad_size:] = 1
+        return wav, pad_mask
 
     def __len__(self):
         return len(self.episodes)
@@ -118,23 +127,34 @@ class TestAudioDataset(Dataset):
             wav1, _ = torchaudio.load(f"{input_dir}/{w1}")
             wav2, _ = torchaudio.load(f"{input_dir}/{w2}")
 
-            wav1 = self.pad_wav(wav1)
-            wav2 = self.pad_wav(wav2)
+            wav1_len = wav1.shape[1]
+            print(f"wav1 len: {wav1_len}")
+
+            wav1, pad_mask1 = self.pad_wav(wav1)
+            wav2, pad_mask2 = self.pad_wav(wav2)
 
             wav1 = self.transform(wav1)
             wav2 = self.transform(wav2)
 
+            # resample pad masks
+            pad_mask1 = F.interpolate(pad_mask1[None, None, :], size=(wav1.shape[2]))[0, 0, :]
+            pad_mask2 = F.interpolate(pad_mask2[None, None, :], size=(wav2.shape[2]))[0, 0, :]
+
             samples.append({
                 "wav1": wav1.unsqueeze(0),
-                "wav2": wav2.unsqueeze(0)
+                "pad_mask1": pad_mask1.unsqueeze(0),
+                "wav2": wav2.unsqueeze(0),
+                "pad_mask2": pad_mask2.unsqueeze(0),
             })
         return samples
 
     def pad_wav(self, wav):
         if wav.shape[1] < self.num_samples:
             pad_size = self.num_samples - wav.shape[1]
-            wav = torch.nn.functional.pad(wav, (0, pad_size))
-        return wav
+            wav = F.pad(wav, (pad_size, 0))
+            pad_mask = torch.zeros((wav.shape[1]), dtype=torch.float32)
+            pad_mask[-pad_size:] = 1
+        return wav, pad_mask
 
     def __len__(self):
         return len(self.samples)

@@ -28,7 +28,7 @@
         "pin_memory": true
     },
     "optimizer": {
-        "lr": 5e-6,
+        "lr": 5e-3,
         "weight_decay": 1e-4
     },
     "loss": {
