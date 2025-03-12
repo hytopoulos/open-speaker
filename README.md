@@ -1,6 +1,6 @@
 # Open Speaker
 
-Open-set speaker verification using ResNet and triplet loss.
+Open-set speaker verification using a ResNet model trained on mel spectrograms extracted from audio. Triplet loss and contrastive loss were both tested for model optimization. I implemented several strategies for online triplet mining including easy/semihard/hard/random positive/negative samples. These are also compatible with the contrastive (pairwise) loss. The training is episodic, using N-ways/K-shots/E episodes per epoch.
 
 The training dataset consists of 300 speakers, each with 10 spoken word clips.
 Designed and implemented for my deep learning final project.
