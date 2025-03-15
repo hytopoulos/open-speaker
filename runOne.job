@@ -12,4 +12,4 @@ Requirements = (HasLocal581 =?= True)
 
 max_materialize = 4
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
-arguments = config/triplet.json
+arguments = config/main.json

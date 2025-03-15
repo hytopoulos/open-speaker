@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
 
 import sys, json
-from agent import SpeakerNetAgent
-from dotmap import DotMap
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from matplotlib import pyplot as plt
+from dotmap import DotMap
 
-np.set_printoptions(precision=3)
+from agent import SpeakerNetAgent
 
 def main(args):
+    np.random.seed(42)
+    np.set_printoptions(precision=3)
+
     config_path = args[1]
     config = load_config(config_path, args)
 
@@ -62,7 +64,6 @@ def make_tsne(agent, dev=True):
 def load_config(config_path, args):
     with open(config_path, 'r') as f:
         config = DotMap(json.load(f))
-        # override the configuration
         for arg in args[2:]:
             key, value = arg.split("=")
             attrs = key.split(".")

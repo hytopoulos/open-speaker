@@ -1,10 +1,3 @@
-config/ce_ephn.json
-config/ce_epshn.json
-config/ce_hphn.json
-config/ce_hpshn.json
-config/ce_random.json
-config/triplet_ephn.json
-config/triplet_epshn.json
-config/triplet_hphn.json
-config/triplet_hpshn.json
-config/triplet_random.json
+config/main.json model.name=SpeakerResNet34 loss.type=triplet loss.positive=hard loss.negative=hard checkpoint_dir=checkpoints/net34 optimizer.lr=3e-4 optimizer.weight_decay=5e-4
+config/main.json model.name=SpeakerResNet34 loss.type=triplet loss.positive=hard loss.negative=hard checkpoint_dir=checkpoints/net34 optimizer.lr=3e-4 optimizer.weight_decay=1e-4
+config/main.json model.name=SpeakerResNet34 loss.type=triplet loss.positive=hard loss.negative=hard checkpoint_dir=checkpoints/net34 optimizer.lr=3e-4 optimizer.weight_decay=5e-3

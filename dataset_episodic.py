@@ -1,11 +1,11 @@
-import os, re, random
+import os, random
 import torch, torchaudio
-
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 from torchaudio.functional import preemphasis
-from torchaudio.transforms import MelSpectrogram, AmplitudeToDB, AddNoise, FrequencyMasking
-from torchvision.transforms import Compose
+from torchaudio.transforms import MelSpectrogram, AmplitudeToDB
+from torchvision.transforms import Compose, Lambda
+from torchvision.transforms.functional import crop
 from tqdm import tqdm
 
 class EpisodicDataloader(DataLoader):
@@ -15,20 +15,48 @@ class EpisodicDataloader(DataLoader):
     def __iter__(self):
         return iter(self.dataset)
 
-class AudioDataset(Dataset):
+class BaseDataset(Dataset):
+    def __init__(self, config):
+        self._transform = Compose([
+            preemphasis,
+            MelSpectrogram(window_fn=torch.hamming_window, n_fft=600, n_mels=512),
+            AmplitudeToDB(top_db=80),
+            Lambda(lambda x: crop(x, 534-512, 0, 512, 512))
+        ])
+        self.num_samples = 10 * 16000
+        self.samples = self.load_data(f"{config.root}")
+        self.config = config
+
+    def transform(self, wav):
+        # pad wav to num_samples
+        pad_size = self.num_samples - wav.shape[1]
+        wav = F.pad(wav, (pad_size, 0))
+
+        # create mask
+        mask = torch.zeros((wav.shape[1]), dtype=torch.float32)
+        mask[-pad_size:] = 1
+
+        # apply transformations
+        wav = self._transform(wav)
+
+        # resample mask
+        mask = F.interpolate(mask[None, None, :], size=(wav.shape[2]))[0, 0, :]
+
+        return wav, mask
+
+    def load_data(self, data_root):
+        raise NotImplementedError()
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        return self.samples[idx]
+
+class AudioDataset(BaseDataset):
     def __init__(self, config, cache_dir=None):
         self.cache_dir = os.path.join(cache_dir, f"{config.root.replace('/', '_')}.pt") if cache_dir is not None else None
-        self.transform = Compose([
-            preemphasis,
-            MelSpectrogram(window_fn=torch.hamming_window, n_fft=600),
-            AmplitudeToDB(top_db=80)
-        ])
-
-        # self.augmentations = Compose([
-        #     FrequencyMasking(freq_mask_param=30, iid_masks=True)
-        # ])
-        self.num_samples = 10 * 16000
-        self.samples = self.load_data(config.root)
+        super(AudioDataset, self).__init__(config)
         self.make_episodes()
 
     def load_data(self, data_root):
@@ -46,40 +74,35 @@ class AudioDataset(Dataset):
             wav_path = os.path.join(data_root, wav_files[i])
             spkid_path = os.path.join(data_root, spkid_files[i])
 
-            wav_data, _ = torchaudio.load(wav_path)
+            wav, _ = torchaudio.load(wav_path)
 
             with open(spkid_path, 'r') as f:
                 spkid = torch.tensor(int(f.read().strip()))
 
-
-            wav_data, pad_mask = self.pad_wav(wav_data)
-            wav_data = self.transform(wav_data)
-
-            # resample pad masks
-            pad_mask = F.interpolate(pad_mask[None, None, :], size=(wav_data.shape[2]))[0, 0, :]
+            wav, mask = self.transform(wav)
 
             if samples.get(spkid.item()) is None:
                 samples[spkid.item()] = []
             samples[spkid.item()].append({
-                "wav": wav_data,
-                "pad_mask": pad_mask,
+                "wav": wav,
+                "pad_mask": mask,
                 "label": spkid
             })
         if self.cache_dir is not None:
             torch.save(samples, self.cache_dir)
         return samples
 
-    def make_episodes(self, num_episodes=100, num_cls=8, num_shots=4):
+    def make_episodes(self):
         episodes = []
         available_speakers = list(self.samples.keys())
 
-        for _ in range(num_episodes):
-            classes = random.sample(available_speakers, num_cls)
+        for _ in range(self.config.num_episodes):
+            classes = random.sample(available_speakers, self.config.num_ways)
             episode = { "wav": [], "label": [], "pad_mask": [] }
             for c in classes:
-                if len(self.samples[c]) < num_shots:
+                if len(self.samples[c]) < self.config.num_shots:
                     continue
-                shots = torch.tensor(random.sample(range(len(self.samples[c])), num_shots))
+                shots = torch.tensor(random.sample(range(len(self.samples[c])), self.config.num_shots))
                 for s in shots:
                     episode["wav"].append(self.samples[c][s]["wav"])
                     episode["label"].append(self.samples[c][s]["label"])
@@ -90,74 +113,25 @@ class AudioDataset(Dataset):
             episodes.append(episode)
         self.episodes = episodes
 
-
-    def pad_wav(self, wav):
-        if wav.shape[1] < self.num_samples:
-            pad_size = self.num_samples - wav.shape[1]
-            wav = F.pad(wav, (pad_size, 0))
-            # 1 where there is padding, 0 otherwise
-            pad_mask = torch.zeros((wav.shape[1]), dtype=torch.float32)
-            pad_mask[-pad_size:] = 1
-        return wav, pad_mask
-
-    def __len__(self):
-        return len(self.episodes)
-
-    def __getitem__(self, idx):
-        return self.episodes[idx]
-
-class TestAudioDataset(Dataset):
-    def __init__(self, config):
-        self.transform = Compose([
-            preemphasis,
-            MelSpectrogram(window_fn=torch.hamming_window, n_fft=600),
-            AmplitudeToDB(top_db=80)
-        ])
-        self.num_samples = 10 * 16000
-        self.samples = self.load_data(f"{config.input_dir}")
-
-    def load_data(self, input_dir):
+class TestAudioDataset(BaseDataset):
+    def load_data(self, data_root):
         wav_paths = []
-        with open(f"{input_dir}/task1.script.txt", 'r') as f:
+        with open(f"{data_root}/task1.script.txt", 'r') as f:
             for line in f:
                 wav_paths.append(line.split())
 
         samples = []
         for w1, w2 in wav_paths:
-            wav1, _ = torchaudio.load(f"{input_dir}/{w1}")
-            wav2, _ = torchaudio.load(f"{input_dir}/{w2}")
+            wav1, _ = torchaudio.load(f"{data_root}/{w1}")
+            wav2, _ = torchaudio.load(f"{data_root}/{w2}")
 
-            wav1_len = wav1.shape[1]
-            print(f"wav1 len: {wav1_len}")
-
-            wav1, pad_mask1 = self.pad_wav(wav1)
-            wav2, pad_mask2 = self.pad_wav(wav2)
-
-            wav1 = self.transform(wav1)
-            wav2 = self.transform(wav2)
-
-            # resample pad masks
-            pad_mask1 = F.interpolate(pad_mask1[None, None, :], size=(wav1.shape[2]))[0, 0, :]
-            pad_mask2 = F.interpolate(pad_mask2[None, None, :], size=(wav2.shape[2]))[0, 0, :]
+            wav1, mask1 = self.transform(wav1)
+            wav2, mask2 = self.transform(wav2)
 
             samples.append({
                 "wav1": wav1.unsqueeze(0),
-                "pad_mask1": pad_mask1.unsqueeze(0),
+                "pad_mask1": mask1.unsqueeze(0),
                 "wav2": wav2.unsqueeze(0),
-                "pad_mask2": pad_mask2.unsqueeze(0),
+                "pad_mask2": mask2.unsqueeze(0),
             })
         return samples
-
-    def pad_wav(self, wav):
-        if wav.shape[1] < self.num_samples:
-            pad_size = self.num_samples - wav.shape[1]
-            wav = F.pad(wav, (pad_size, 0))
-            pad_mask = torch.zeros((wav.shape[1]), dtype=torch.float32)
-            pad_mask[-pad_size:] = 1
-        return wav, pad_mask
-
-    def __len__(self):
-        return len(self.samples)
-
-    def __getitem__(self, idx):
-        return self.samples[idx]

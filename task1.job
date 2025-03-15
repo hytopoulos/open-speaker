@@ -4,13 +4,13 @@ request_cpus = 1
 request_gpus = 1
 gpus_minimum_memory = 10GB
 request_memory = 8GB
-output = .condor_logs/$(Process).out
-error  = .condor_logs/$(Process).err
-log    = .condor_logs/$(Process).log
+output = .condor_logs/$(ClusterId)-$(Process).out
+error  = .condor_logs/$(ClusterId)-$(Process).err
+log    = .condor_logs/$(ClusterId)-$(Process).log
 +CSCI_GrpDesktop = true
 Requirements = (HasLocal581 =?= True)
 
-max_materialize = 4
+max_materialize = 12
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
 arguments = $(args)
 Queue arguments from args.txt
